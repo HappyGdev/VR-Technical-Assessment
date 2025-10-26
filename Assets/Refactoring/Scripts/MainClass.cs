@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -7,21 +8,32 @@ using UnityEngine.UI;
 
 public class MainClass : MonoBehaviour
 {
+    //send to Another Manager
+    public static Action onReset;
+
+    [Header("Gameplay Settings")]
     public GameObject itemPrefab;
     public Transform player;
     public TextMeshProUGUI info;
     public int MAX = 50;
     public float range = 25f;
-    public bool started = false;
-    public Light[] mainLight;
-    
-    public static List<GameObject> ALL = new List<GameObject>();
-    public static MainClass me;
 
+    [Header("Scene References")]
+    public Light[] mainLight;
+
+    [HideInInspector]
+    public bool started = false;
+
+    public static List<GameObject> ALL = new List<GameObject>();
+    public static MainClass instance;
+
+    private float avgDistance = 0f;
+    private float distanceUpdateTimer = 0f;
+    private const float distanceUpdateInterval = 0.2f;
 
     void Awake()
     {
-        me = this; 
+        instance = this;
     }
 
 
@@ -38,16 +50,18 @@ public class MainClass : MonoBehaviour
         for (int i = 0; i < MAX; i++)
         {
             GameObject g = Instantiate(itemPrefab);
-            g.transform.position = new Vector3(Random.Range(-range, range), Random.Range(2, 5), Random.Range(-range, range));
-            g.transform.localScale = new Vector3(1,1,1)*Random.Range(0.2f,1.7f);
+            g.transform.position = new Vector3(UnityEngine.Random.Range(-range, range), UnityEngine.Random.Range(2, 5), UnityEngine.Random.Range(-range, range));
+            g.transform.localScale = new Vector3(1, 1, 1) * UnityEngine.Random.Range(0.2f, 1.7f);
             g.name = "junk_" + i;
             var b = g.GetComponent<RandomThings>();
             if (b != null) b.main = this;
             ALL.Add(g);
         }
 
-        gameObject.AddComponent<Manager1>();
-        gameObject.AddComponent<Manager2>();
+        //do nothing
+        //gameObject.AddComponent<Manager1>();
+        //gameObject.AddComponent<Manager2>();
+
         gameObject.AddComponent<AnotherManager>();
         yield return null;
     }
@@ -56,33 +70,36 @@ public class MainClass : MonoBehaviour
     void Update()
     {
         if (!started) return;
-        float avg = 0f;
-        int cnt = 0;
+
+        distanceUpdateTimer += Time.deltaTime;
+        if (distanceUpdateTimer >= distanceUpdateInterval)
+        {
+            distanceUpdateTimer = 0f;
+            UpdateAverageDistance();
+        }
+
+        info.text = $"Collected: {AnotherManager._CollectedCount}/{MAX} Avg: {avgDistance:F1}";
+
+        // Event-based Reset
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            onReset?.Invoke();
+        }
+    }
+    private void UpdateAverageDistance()
+    {
+        float sum = 0f;
+        int count = 0;
+
         foreach (var o in ALL)
         {
             if (o != null)
             {
-                avg += Vector3.Distance(player.position, o.transform.position);
-                cnt++;
+                sum += Vector3.Distance(player.position, o.transform.position);
+                count++;
             }
         }
 
-        if (cnt > 0) avg /= cnt;
-        
-        // TODO: Display the average value with one decimal place
-        info.text = "Collected:" + AnotherManager._CollectedCount + "/" + MAX + " Avg:" + avg;
-
-
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            var am = FindObjectOfType<AnotherManager>();
-            if (am != null)
-                am.ResetAll();
-        }
-        
-        var temp = new List<GameObject>();
-        foreach (var o in ALL)
-            if (o != null && o.activeSelf)
-                temp.Add(o);
+        avgDistance = (count > 0) ? sum / count : 0f;
     }
 }

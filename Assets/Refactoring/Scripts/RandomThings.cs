@@ -1,23 +1,30 @@
-using System;
 using UnityEngine;
-using Random = UnityEngine.Random;
+using System.Collections;
 
-
+[RequireComponent(typeof(MeshRenderer))]
 public class RandomThings : MonoBehaviour
 {
+    //do ta kar anjam shod: 1:rang va charkhesh be sorate meghdar avalieh be system dadeh shodan va dar har frame taghir nemikonan
+    //2:system dar halate ghabli har sanieh 60 bar check mikard alan har 0.1f sanieh yek bar chek mikoneh va mitooneh nafas bekeshe ba coroutine
     public MainClass main;
-    public bool taken = false;
+    private bool taken = false;
     private MeshRenderer rend;
     private Color originalColor;
-    private Material instanceMat;
+
+    //make rotation Seprate from Update
+    [SerializeField] private float rotationSpeed = 30f;
+
+    //instead of update use coroutines
+    private static readonly float sphereRadius = 1f;
+    private static readonly float maxRayDistance = 5f;
+    [SerializeField] private float checkInterval = 0.1f;
 
     private void Awake()
     {
         rend = GetComponent<MeshRenderer>();
-        instanceMat = new Material(rend.material);
-        rend.material = instanceMat;
         rend.material.color = Color.white;
-        var c = Random.Range(0f, 1f);
+
+        float c = Random.Range(0f, 1f);
         if (c >= 0.5f)
         {
             originalColor = Color.red;
@@ -28,83 +35,124 @@ public class RandomThings : MonoBehaviour
         }
     }
 
-
-    private void OnCollisionEnter(Collision c)
+    //start coroutine
+    private void Start()
     {
-        if (taken) return;
-        if (c.gameObject.CompareTag("Player"))
-        {
-            taken = true;
-            AnotherManager._CollectedCount++;
-            if (originalColor == Color.red)
-            {
-                AnotherManager._CollectedCount -= 2;
-            }
-
-            MainClass.ALL.Remove(gameObject);
-            UtilityStuff._Put("lastcol", Time.time);
-            Destroy(gameObject);
-        }
-    }
-
-    private void OnDrawGizmos()
-    {
-        if (main != null && main.mainLight != null && main.mainLight[0] != null && main.mainLight[1] != null)
-        {
-            Gizmos.color = originalColor;
-
-            float rayLength = 5f;
-            float radius = 0.2f;
-
-            Vector3 start0 = main.mainLight[0].transform.position;
-            Vector3 end0 = start0 + main.mainLight[0].transform.forward * rayLength;
-            Gizmos.DrawLine(start0, end0);
-            Gizmos.DrawWireSphere(start0, radius);
-            
-            Vector3 start1 = main.mainLight[1].transform.position;
-            Vector3 end1 = start1 + main.mainLight[1].transform.forward * rayLength;
-            Gizmos.DrawLine(start1, end1);
-            Gizmos.DrawWireSphere(start1, radius);
-        }
-    }
-
-
-    void Update()
-    {
-        transform.Rotate(Vector3.up * Random.Range(10, 360) * Time.deltaTime);
-        if (main != null && main.mainLight != null && rend != null)
-        {
-            Ray ray0 = new Ray(main.mainLight[0].transform.position, main.mainLight[0].transform.forward);
-            RaycastHit hit0;
-            float radius0 = 1f; 
-
-            if (Physics.SphereCast(ray0, radius0, out hit0, 5f))
-            {
-                if (hit0.collider.gameObject == gameObject)
-                {
-                    hit0.collider.gameObject.GetComponent<RandomThings>().rend.material.color = originalColor;
-                    return;
-                }
-            }
-
-            Ray ray1 = new Ray(main.mainLight[1].transform.position, main.mainLight[1].transform.forward);
-            RaycastHit hit1;
-            float radius1 = 1f; 
-
-            if (Physics.SphereCast(ray1, radius1, out hit1, 5f))
-            {
-                if (hit1.collider.gameObject == gameObject)
-                {
-                    hit1.collider.gameObject.GetComponent<RandomThings>().rend.material.color = originalColor;
-                    return;
-                }
-            }
-        }
-        rend.material.color = Color.white;
+        StartCoroutine(CheckLightHitsRoutine());
     }
 
     public void doRotate()
     {
-        transform.Rotate(0, 30 * Time.deltaTime, 0);
+        transform.Rotate(Vector3.up * rotationSpeed * Time.deltaTime);
+    }
+
+
+    private IEnumerator CheckLightHitsRoutine()
+    {
+        while (true)
+        {
+            CheckLightHits();
+            //make system Breathing
+            yield return new WaitForSeconds(checkInterval);
+        }
+    }
+
+    private void CheckLightHits()
+    {
+        //early returns
+        if (main == null)
+        {
+            return;
+        }
+        if (main.mainLight == null || main.mainLight.Length == 0)
+        {
+            return;
+        }
+
+        bool hitByLight = false;
+
+        foreach (var light in main.mainLight)
+        {
+            if (light == null) continue;
+
+            Ray ray = new Ray(light.transform.position, light.transform.forward);
+            RaycastHit hit;
+            if (Physics.SphereCast(ray, sphereRadius, out hit, maxRayDistance))
+            {
+                if (hit.collider.gameObject == gameObject)
+                {
+                    RandomThings rt = hit.collider.GetComponent<RandomThings>();
+                    if (rt != null)
+                    {
+                        rt.rend.material.color = originalColor;
+                    }
+                    hitByLight = true;
+                    break;
+                }
+            }
+        }
+
+        if (hitByLight)
+        {
+            rend.material.color = originalColor;
+        }
+        else
+        {
+            rend.material.color = Color.white;
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        //early returns
+        if (taken)
+        {
+            return;
+        }
+        if (!collision.gameObject.CompareTag("Player"))
+        {
+            return;
+        }
+
+        taken = true;
+
+        if (originalColor == Color.red)
+        {
+            AnotherManager._CollectedCount += -1;
+        }
+        else
+        {
+            AnotherManager._CollectedCount += 1;
+        }
+
+        MainClass.ALL.Remove(gameObject);
+        UtilityStuff._Put("lastcol", Time.time);
+
+        Destroy(gameObject);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        //early returns
+        if (main == null)
+        {
+            return;
+        }
+        if (main.mainLight == null || main.mainLight.Length == 0)
+        {
+            return;
+        }
+
+        Gizmos.color = originalColor;
+        foreach (var light in main.mainLight)
+        {
+            if (light == null) continue;
+
+            Vector3 start = light.transform.position;
+            Vector3 end = start + light.transform.forward * maxRayDistance;
+
+            Gizmos.DrawLine(start, end);
+            Gizmos.DrawWireSphere(start, 0.2f);
+        }
     }
 }

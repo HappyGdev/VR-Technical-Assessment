@@ -2,7 +2,7 @@
 //using System.Collections.Generic;
 
 
-//public class Manager2: MonoBehaviour
+//public class Manager2 : MonoBehaviour
 //{
 //    public void doSomething()
 //    {
@@ -19,4 +19,4 @@
 //    }
 //}
 
-//Do nothing
+////Do nothing

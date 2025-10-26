@@ -3,27 +3,60 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class playerController : MonoBehaviour
 {
-    public float moveSpeed = 5f;
-    public float rotationSpeed = 10f;
+    #region Variables
+    [Header("Movement Settings")]
+    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float rotationSpeed = 10f;
+    [Space]
 
     private Rigidbody rb;
     private Camera mainCam;
+    private Vector3 inputDir;
 
-    void FixedUpdate()
+    #endregion
+
+    #region Initilize
+    private void Awake()
     {
-        float inputX = Input.GetAxisRaw("Horizontal");
-        float inputZ = Input.GetAxisRaw("Vertical");
+        //Component Shouldn't Call in Update or fixedUpdate, i called them on Awake
         rb = GetComponent<Rigidbody>();
         mainCam = Camera.main;
+    }
+    #endregion
 
-        Vector3 inputDir = new Vector3(inputX, 0f, inputZ).normalized;
+    #region update
+    private void Update()
+    {
+        // Get input in Update not Fixed Update cause Maybe Lose Frame
+        float inputX = Input.GetAxisRaw("Horizontal");
+        float inputZ = Input.GetAxisRaw("Vertical");
+
+        //inoredr to call inputdir we make it as variable
+        inputDir = new Vector3(inputX, 0f, inputZ).normalized;
+    }
+    void FixedUpdate()
+    {
+        //Physic Based Move in Fixed Update
+        HandleMove();
+        HandleRotation();
+    }
+    #endregion
+
+    #region Move
+    private void HandleMove()
+    {
         if (inputDir.magnitude >= 0.01f)
         {
             Vector3 move = inputDir * moveSpeed;
             rb.MovePosition(rb.position + move * Time.fixedDeltaTime);
         }
-        Vector3 worldPos = GetMouseWorldPositionAtPlayerHeight();
+    }
+    #endregion
 
+    #region Rotation
+    private void HandleRotation()
+    {
+        Vector3 worldPos = GetMouseWorldPositionAtPlayerHeight();
         Vector3 direction = worldPos - transform.position;
         direction.y = 0f;
 
@@ -33,6 +66,9 @@ public class playerController : MonoBehaviour
             rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
         }
     }
+    #endregion
+
+    #region Mouse
     Vector3 GetMouseWorldPositionAtPlayerHeight()
     {
         Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
@@ -46,5 +82,5 @@ public class playerController : MonoBehaviour
 
         return transform.position + transform.forward;
     }
-
+    #endregion
 }

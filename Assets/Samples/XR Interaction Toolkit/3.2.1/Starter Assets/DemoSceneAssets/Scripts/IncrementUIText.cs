@@ -1,3 +1,4 @@
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
@@ -8,6 +9,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
     /// </summary>
     public class IncrementUIText : MonoBehaviour
     {
+        [SerializeField] private bool isReset;
         public GameObject spherePF;
         public Transform instantiatePos;
         [SerializeField]
@@ -39,10 +41,18 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
         /// </summary>
         public void IncrementText()
         {
+            if (isReset)
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                return;
+            }
+
             Instantiate(spherePF, instantiatePos.transform.position, Quaternion.identity);
             m_Count += 1;
             if (m_Text != null)
                 m_Text.text = m_Count.ToString();
+
+
         }
     }
 }

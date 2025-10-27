@@ -8,6 +8,8 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
     /// </summary>
     public class IncrementUIText : MonoBehaviour
     {
+        public GameObject spherePF;
+        public Transform instantiatePos;
         [SerializeField]
         [Tooltip("The Text component this behavior uses to display the incremented value.")]
         Text m_Text;
@@ -37,6 +39,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
         /// </summary>
         public void IncrementText()
         {
+            Instantiate(spherePF, instantiatePos.transform.position, Quaternion.identity);
             m_Count += 1;
             if (m_Text != null)
                 m_Text.text = m_Count.ToString();

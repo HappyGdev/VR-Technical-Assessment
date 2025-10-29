@@ -20,7 +20,7 @@ public class AnotherManager : MonoBehaviour
     void Start()
     {
         //StartCoroutine(WeirdLoop());
-        StartCoroutine(SpawnItem());
+       StartCoroutine(SpawnItem());
     }
 
 
